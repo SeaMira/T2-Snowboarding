@@ -1,0 +1,3 @@
+[submodule "extern/MonaEngine"]
+	path = extern/MonaEngine
+	url = https://github.com/dantros/MonaEngine.git
