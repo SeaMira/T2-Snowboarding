@@ -1,11 +1,18 @@
 #include "MonaEngine.hpp"
 #include "player.h"
-class MinimalSetup : public Mona::Application
+#include "camera.h"
+
+class Snowboarding : public Mona::Application
 {
 public:
-	MinimalSetup() = default;
-	~MinimalSetup() = default;
+	Snowboarding() = default;
+	~Snowboarding() = default;
 	virtual void UserStartUp(Mona::World& world) noexcept override {
+
+		world.SetGravity(glm::vec3(0.0f, 0.0f, 0.0f));
+		world.SetAmbientLight(glm::vec3(0.5f));
+		auto player = world.CreateGameObject<Player>();
+		auto camera = world.CreateGameObject<Camera>(player, 15.0f, 0.0f, 0.0f);
 	}
 
 	virtual void UserShutDown(Mona::World& world) noexcept override {
@@ -15,7 +22,7 @@ public:
 };
 int main()
 {
-	MinimalSetup app;
+	Snowboarding app;
 	Mona::Engine engine(app);
 	engine.StartMainLoop();
 

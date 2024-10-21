@@ -1,5 +1,6 @@
 add_library(snowboarding_lib STATIC
     "player.cpp"
+    "camera.cpp"
 )
 set_property(TARGET snowboarding_lib PROPERTY CXX_STANDARD 20)
 
