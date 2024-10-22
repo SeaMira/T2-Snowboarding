@@ -103,7 +103,7 @@ void Camera::rightStickMoved(Mona::World& world) {
 
     // Ajustar yaw y pitch usando los valores de los ejes de la palanca derecha
     if (std::abs(rightStickX) > 0.2f) mYaw += rightStickX * mJoystickSensitiviy;
-    if (std::abs(rightStickY) > 0.2f) mPitch -= rightStickY * mJoystickSensitiviy; // Invertido para que mover hacia arriba incremente el pitch
+    if (std::abs(rightStickY) > 0.2f) mPitch += rightStickY * mJoystickSensitiviy; // Invertido para que mover hacia arriba incremente el pitch
 
     // Limitar el ángulo de pitch para que la cámara no pase de los polos (-89 a 89 grados)
     mPitch = std::clamp(mPitch, -89.0f, 89.0f);
