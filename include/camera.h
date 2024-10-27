@@ -3,7 +3,7 @@
 #include "MonaEngine.hpp"
 #include "Rendering/DiffuseFlatMaterial.hpp"
 #include "player.h"
-#include <iostream>
+
 
 class Camera: public Mona::GameObject {
 public:

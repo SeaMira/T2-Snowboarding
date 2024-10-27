@@ -11,8 +11,6 @@ Camera::~Camera() = default;
 void Camera::UserStartUp(Mona::World& world) noexcept {
     mTransform = world.AddComponent<Mona::TransformComponent>(*this, glm::vec3(0.0f));
     glm::vec3 cameraPos = calculateCameraPosition(mPlayerTransform->GetLocalTranslation());
-    std::cout << "Calculated pos: " << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << std::endl;
-    std::cout << "Pitch: " << mPitch << std::endl;
     glm::vec3 cameraLookUp = calculateLookUp();
     glm::quat cameraRotation = calculateRotation(cameraPos, mPlayerTransform->GetLocalTranslation(), cameraLookUp);
 
@@ -31,8 +29,6 @@ void Camera::UserUpdate(Mona::World& world, float timeStep) noexcept {
     rightStickMoved(world);
 
     glm::vec3 cameraPos = calculateCameraPosition(mPlayerTransform->GetLocalTranslation());
-    std::cout << "Calculated pos: " << cameraPos.x << ", " << cameraPos.y << ", " << cameraPos.z << std::endl;
-    std::cout << "Pitch: " << mPitch << std::endl;
     glm::vec3 cameraLookUp = calculateLookUp();
     glm::quat cameraRotation = calculateRotation(cameraPos, mPlayerTransform->GetLocalTranslation(), cameraLookUp);
 

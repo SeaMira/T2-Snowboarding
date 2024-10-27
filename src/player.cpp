@@ -35,7 +35,6 @@ void Player::keyPressed(Mona::World& world, float timeStep) {
 		moveDir += glm::vec3(-1.0f, 0.0f, 0.0f);
 	}
 	if (moveDir.x != 0.0f || moveDir.y != 0.0f || moveDir.z != 0.0f) moveDir = glm::normalize(moveDir);
-	std::cout << moveDir.x << ", " << moveDir.y << ", " << moveDir.z << std::endl;
 	mTransform->Translate(moveDir * timeStep * mSpeed);
 
 }
