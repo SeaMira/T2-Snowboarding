@@ -1,39 +1,66 @@
 #include "mesh_navigator.h"
 #include <iostream>
 
-bool isPointInTriangleXZ(const float x, const float z, Triangle& tri) {
-    // Convertir el triángulo y el punto a 2D (solo coordenadas x y z)
+bool isPointInTriangleXZ(const float x, const float z, const Triangle& tri) {
     glm::vec2 p(x, z);
     glm::vec2 a(tri.v0.x, tri.v0.z);
     glm::vec2 b(tri.v1.x, tri.v1.z);
     glm::vec2 c(tri.v2.x, tri.v2.z);
 
-    // Vectores del triángulo en 2D
-    glm::vec2 v0v1 = b - a;
-    glm::vec2 v0v2 = c - a;
-    glm::vec2 v0p = p - a;
+    // Calculamos los productos cruzados para ver si el punto está consistentemente a la izquierda de cada lado.
+    auto cross = [](const glm::vec2& v1, const glm::vec2& v2) {
+        return v1.x * v2.y - v1.y * v2.x;
+        };
 
-    // Calcular productos cruzados en 2D
-    float cross1 = v0v1.x * v0v2.y - v0v1.y * v0v2.x; // Determinante para el área del triángulo
-    float cross2 = v0v1.x * v0p.y - v0v1.y * v0p.x;   // Área entre v0, v1 y p
-    float cross3 = v0v2.x * v0p.y - v0v2.y * v0p.x;   // Área entre v0, v2 y p
+    // Verificar si el punto está a la izquierda de cada lado
+    bool left1 = cross(b - a, p - a) >= 0.0f;
+    bool left2 = cross(c - b, p - b) >= 0.0f;
+    bool left3 = cross(a - c, p - c) >= 0.0f;
 
-    // Usar coordenadas baricéntricas en 2D
-    float u = cross3 / cross1;
-    float v = cross2 / cross1;
-    float w = 1.0f - u - v;
-
-    // El punto está dentro del triángulo si u, v y w están en el rango [0, 1]
-    return (u >= 0.0f && u <= 1.0f) && (v >= 0.0f && v <= 1.0f) && (w >= 0.0f && w <= 1.0f);
+    // Si el punto está a la izquierda de los tres lados, está dentro del triángulo
+    return (left1 && left2 && left3) || (!left1 && !left2 && !left3);
 }
 
-MeshNavigator::MeshNavigator(const std::string& filename) {
-    triangles = loadMeshWithNeighbors(filename);
+float getInterpolatedHeight(const glm::vec2& positionXZ, const Triangle tri) {
+    const glm::vec3& v0 = tri.v0;
+    const glm::vec3& v1 = tri.v1;
+    const glm::vec3& v2 = tri.v2;
+
+    // Convertir los puntos a 2D (usando x y z).
+    glm::vec2 p0(v0.x, v0.z);
+    glm::vec2 p1(v1.x, v1.z);
+    glm::vec2 p2(v2.x, v2.z);
+
+    // Calcular los vectores de los bordes
+    glm::vec2 v0p = positionXZ - p0;
+    glm::vec2 v0v1 = p1 - p0;
+    glm::vec2 v0v2 = p2 - p0;
+
+    // Calcular las coordenadas baricéntricas (usando la fórmula con determinantes)
+    float d00 = glm::dot(v0v1, v0v1);
+    float d01 = glm::dot(v0v1, v0v2);
+    float d11 = glm::dot(v0v2, v0v2);
+    float d20 = glm::dot(v0p, v0v1);
+    float d21 = glm::dot(v0p, v0v2);
+
+    float denom = d00 * d11 - d01 * d01;
+    float v = (d11 * d20 - d01 * d21) / denom;
+    float w = (d00 * d21 - d01 * d20) / denom;
+    float u = 1.0f - v - w;
+
+    // Interpolar la altura usando las coordenadas baricéntricas
+    float interpolatedHeight = u * v0.y + v * v1.y + w * v2.y;
+
+    return interpolatedHeight;
 }
+
+
+
+MeshNavigator::MeshNavigator(std::string filename, float scale) : m_filename(filename), m_scale(scale) {}
 
 
 // Función para cargar el archivo .obj y establecer los vecinos
-std::vector<Triangle> MeshNavigator::loadMeshWithNeighbors(const std::string& filename) {
+std::vector<Triangle> MeshNavigator::loadMeshWithNeighbors(const std::string& filename, float scale) {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate);
     if (!scene || !scene->HasMeshes()) {
@@ -57,15 +84,15 @@ std::vector<Triangle> MeshNavigator::loadMeshWithNeighbors(const std::string& fi
         //std::cout << "Se lee cara" << std::endl;
         if (face.mNumIndices != 3) continue;  // Asegurarse de que es un triángulo
 
-        glm::vec3 v0 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[0]].x,
-                                 scene->mMeshes[0]->mVertices[face.mIndices[0]].y,
-                                 scene->mMeshes[0]->mVertices[face.mIndices[0]].z);
-        glm::vec3 v1 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[1]].x,
-                                 scene->mMeshes[0]->mVertices[face.mIndices[1]].y,
-                                 scene->mMeshes[0]->mVertices[face.mIndices[1]].z);
-        glm::vec3 v2 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[2]].x,
-                                 scene->mMeshes[0]->mVertices[face.mIndices[2]].y,
-                                 scene->mMeshes[0]->mVertices[face.mIndices[2]].z);
+        glm::vec3 v0 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[0]].x * scale,
+                                 scene->mMeshes[0]->mVertices[face.mIndices[0]].y * scale,
+                                 scene->mMeshes[0]->mVertices[face.mIndices[0]].z * scale);
+        glm::vec3 v1 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[1]].x * scale,
+                                 scene->mMeshes[0]->mVertices[face.mIndices[1]].y * scale,
+                                 scene->mMeshes[0]->mVertices[face.mIndices[1]].z * scale);
+        glm::vec3 v2 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[2]].x * scale,
+                                 scene->mMeshes[0]->mVertices[face.mIndices[2]].y * scale,
+                                 scene->mMeshes[0]->mVertices[face.mIndices[2]].z * scale);
 
         triangles.emplace_back(v0, v1, v2);
         Triangle* currentTriangle = &triangles.back();
@@ -101,25 +128,129 @@ std::vector<Triangle> MeshNavigator::loadMeshWithNeighbors(const std::string& fi
             }
         }
     }
+    for (Triangle& tri : triangles) {
+        if (tri.v0 == glm::vec3(0.0f) || tri.v1 == glm::vec3(0.0f) || tri.v2 == glm::vec3(0.0f))
+            std::cout << "faltan vértices" << std::endl;
+    }
 
     return triangles;
 }
 
 
-Triangle* MeshNavigator::getTriangleFromPosition(glm::vec3 position) {
-    for (Triangle& tri : triangles) { // allTriangles representa todos los triángulos de la malla
-        if (isPointInTriangleXZ(position.x, position.z, tri)) {
-            return &tri;
-        }
+//Triangle* MeshNavigator::getTriangleFromPosition(glm::vec3 position) {
+//    for (Triangle& tri : triangles) { // allTriangles representa todos los triángulos de la malla
+//        //std::cout <<  tri.v0.x << ", " << tri.v0.y << ", " << tri.v0.z << std::endl;
+//        if (isPointInTriangleXZ(position.x, position.z, tri)) {
+//            return &tri;
+//        }
+//    }
+//}
+
+
+Triangle MeshNavigator::getTriangleFromPosition(glm::vec3 position) {
+    std::cout << "Carga de archivo" << std::endl;
+    std::cout << m_filename << std::endl;
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(m_filename, aiProcess_Triangulate);
+    if (!scene || !scene->HasMeshes()) {
+        throw std::runtime_error("Failed to load mesh");
     }
+
+    std::cout << "Mesh se ha cargado" << std::endl;
+    size_t numFaces = 0;
+
+    for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
+        numFaces += scene->mMeshes[i]->mNumFaces;
+    }
+    std::cout << "Num faces " << numFaces << std::endl;
+
+    for (unsigned int i = 0; i < scene->mMeshes[0]->mNumFaces; i++) {
+        auto face = scene->mMeshes[0]->mFaces[i];
+        //std::cout << "Se lee cara" << std::endl;
+        if (face.mNumIndices != 3) continue;  // Asegurarse de que es un triángulo
+        //std::cout << "i: " << i << std::endl;
+
+        glm::vec3 v0 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[0]].x * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[0]].y * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[0]].z * m_scale);
+        glm::vec3 v1 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[1]].x * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[1]].y * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[1]].z * m_scale);
+        glm::vec3 v2 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[2]].x * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[2]].y * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[2]].z * m_scale);
+
+        /*std::cout << v0.x << ", " << v0.y << ", " << v0.z << std::endl;
+        std::cout << v1.x << ", " << v1.y << ", " << v1.z << std::endl;
+        std::cout << v2.x << ", " << v2.y << ", " << v2.z << std::endl;*/
+
+        Triangle T(v0, v1, v2);
+
+        if (isPointInTriangleXZ(position.x, position.z, T)) {
+            return T;
+        }
+        
+    }
+    Triangle T(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f));
+    return T;
 }
+
+Triangle MeshNavigator::getTriangleFromPosition(const std::string& filename, glm::vec3 position) {
+    std::cout << "Carga de archivo" << std::endl;
+    std::cout << filename << std::endl;
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate);
+    if (!scene || !scene->HasMeshes()) {
+        throw std::runtime_error("Failed to load mesh");
+    }
+
+    std::cout << "Mesh se ha cargado" << std::endl;
+    size_t numFaces = 0;
+
+    for (uint32_t i = 0; i < scene->mNumMeshes; i++) {
+        numFaces += scene->mMeshes[i]->mNumFaces;
+    }
+    std::cout << "Num faces " << numFaces << std::endl;
+
+    for (unsigned int i = 0; i < scene->mMeshes[0]->mNumFaces; i++) {
+        auto face = scene->mMeshes[0]->mFaces[i];
+        //std::cout << "Se lee cara" << std::endl;
+        if (face.mNumIndices != 3) continue;  // Asegurarse de que es un triángulo
+        //std::cout << "i: " << i << std::endl;
+
+        glm::vec3 v0 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[0]].x * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[0]].y * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[0]].z * m_scale);
+        glm::vec3 v1 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[1]].x * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[1]].y * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[1]].z * m_scale);
+        glm::vec3 v2 = glm::vec3(scene->mMeshes[0]->mVertices[face.mIndices[2]].x * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[2]].y * m_scale,
+            scene->mMeshes[0]->mVertices[face.mIndices[2]].z * m_scale);
+
+        std::cout << v0.x << ", " << v0.y << ", " << v0.z << std::endl;
+        std::cout << v1.x << ", " << v1.y << ", " << v1.z << std::endl;
+        std::cout << v2.x << ", " << v2.y << ", " << v2.z << std::endl;
+
+        Triangle T(v0, v1, v2);
+
+        if (isPointInTriangleXZ(position.x, position.z, T)) {
+            return T;
+        }
+
+    }
+    std::cout << "Sin triangulo" << std::endl;
+    Triangle T(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f));
+    return T;
+}
+
 
 Triangle* MeshNavigator::getTriangleFromPosition(glm::vec3 position, Triangle* tri) {
     Triangle* current = tri;
 
     // Bucle de búsqueda en espiral a través de vecinos
     while (current) {
-        if (isPointInTriangleXZ(position.x, position.y, *current)) {
+        if (isPointInTriangleXZ(position.x, position.z, *current)) {
             return current; // Punto encontrado dentro del triángulo actual
         }
 
@@ -136,6 +267,7 @@ Triangle* MeshNavigator::getTriangleFromPosition(glm::vec3 position, Triangle* t
                     (neighbor->v0.y + neighbor->v1.y + neighbor->v2.y) / 3.0f,
                     (neighbor->v0.z + neighbor->v1.z + neighbor->v2.z) / 3.0f
                 );
+                std::cout << "Pos prev: " << neighborCenter.x << "," << neighborCenter.y << ", " << neighborCenter.z << std::endl;
 
                 // Calcular la distancia entre el punto y el centro del vecino
                 float dist = glm::distance(position, neighborCenter);

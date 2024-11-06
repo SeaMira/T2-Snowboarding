@@ -1,6 +1,7 @@
 #include "player.h"
+#include <iostream>
 
-Player::Player(glm::vec3 initPos) : mInitPos(initPos) {}
+Player::Player(glm::vec3 initPos, MeshNavigator* meshNav) : mInitPos(initPos), m_MeshNav(meshNav) {}
 
 Player::~Player() = default;
 
@@ -11,11 +12,37 @@ void Player::UserStartUp(Mona::World& world) noexcept {
 	auto& meshManager = Mona::MeshManager::GetInstance();
 	mTransform = world.AddComponent<Mona::TransformComponent>(*this, mInitPos, glm::fquat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 	world.AddComponent<Mona::StaticMeshComponent>(*this, meshManager.LoadMesh(Mona::Mesh::PrimitiveType::Cube), wallMaterial);
+
+	//std::cout << "Pos prev: " << mTransform->GetLocalTranslation().x << ", " << mTransform->GetLocalTranslation().y << ", " << mTransform->GetLocalTranslation().z << std::endl;
+	mPosT = m_MeshNav->getTriangleFromPosition(mTransform->GetLocalTranslation());
+	std::cout << mPosT.v0.x << ", " << mPosT.v0.y << ", " << mPosT.v0.z << std::endl;
+	std::cout << mPosT.v1.x << ", " << mPosT.v1.y << ", " << mPosT.v1.z << std::endl;
+	std::cout << mPosT.v2.x << ", " << mPosT.v2.y << ", " << mPosT.v2.z << std::endl;
+	glm::vec2 posXZ(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
+	float y = getInterpolatedHeight(posXZ, mPosT);
+	mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, y, mTransform->GetLocalTranslation().z));
+	//std::cout << "Pos post: " << mPosT->v0.x << ", " << mPosT->v0.y << ", " << mPosT->v0.z << std::endl;
 }
 
 void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 	keyPressed(world, timeStep);
 	buttonPressed(world, timeStep);
+	auto& config = Mona::Config::GetInstance();
+	std::filesystem::path terrain_p = config.getPathOfApplicationAsset("snowboard_terrain.obj");
+
+	mTimer -= timeStep;
+	if (mTimer <= 0.0f) {
+		std::cout << "Pos prev: " << mTransform->GetLocalTranslation().x << ", " << mTransform->GetLocalTranslation().y << ", " << mTransform->GetLocalTranslation().z << std::endl;
+		mPosT = m_MeshNav->getTriangleFromPosition(terrain_p.string(), mTransform->GetLocalTranslation());
+		mTimer = 1.0f;
+	}
+	//std::cout << "y" << std::endl;
+	glm::vec2 posXZ(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
+	float y = getInterpolatedHeight(posXZ, mPosT);
+	std::cout << y << std::endl;
+	//mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, y, mTransform->GetLocalTranslation().z));
+	//std::cout << "Pos post: " << mTransform->GetLocalTranslation().x << "," << mTransform->GetLocalTranslation().y << ", " << mTransform->GetLocalTranslation().z << std::endl;
+
 }
 
 

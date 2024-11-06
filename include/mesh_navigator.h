@@ -11,14 +11,20 @@
 
 // Estructura Triangle
 struct Triangle {
-    glm::vec3 v0, v1, v2; // Vértices del triángulo
+    glm::vec3 v0 = glm::vec3(0.0f), v1 = glm::vec3(0.0f), v2 = glm::vec3(0.0f); // Vértices del triángulo
     Triangle* neighbor1;  // Triángulos vecinos
     Triangle* neighbor2;
     Triangle* neighbor3;
 
     Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
-        : v0(a), v1(b), v2(c), neighbor1(nullptr), neighbor2(nullptr), neighbor3(nullptr) {}
+        : neighbor1(nullptr), neighbor2(nullptr), neighbor3(nullptr) {
+        v0 = a;
+        v1 = b;
+        v2 = c;
+    }
 };
+
+float getInterpolatedHeight(const glm::vec2& pos, Triangle triangle);
 
 // Hash para comparar aristas, sin importar el orden de los vértices
 struct Edge {
@@ -52,16 +58,18 @@ namespace std {
 }
 
 
-
 class MeshNavigator {
     public:
-    MeshNavigator(const std::string& filename);
+    MeshNavigator(std::string filename, float scale);
     ~MeshNavigator() = default;
 
+    std::string m_filename;
     std::vector<Triangle> triangles;
-    std::vector<Triangle> loadMeshWithNeighbors(const std::string& filename);
-    Triangle* getTriangleFromPosition(glm::vec3 position);
+    std::vector<Triangle> loadMeshWithNeighbors(const std::string& filename, float scale);
+    Triangle getTriangleFromPosition(glm::vec3 position);
+    Triangle getTriangleFromPosition(const std::string& filename, glm::vec3 position);
     Triangle* getTriangleFromPosition(glm::vec3 position, Triangle* startingT);
 
-};
+    float m_scale;
 
+};

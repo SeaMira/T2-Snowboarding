@@ -1,11 +1,24 @@
 #include "MonaEngine.hpp"
 #include "Core/Config.hpp"
 #include "Rendering/DiffuseFlatMaterial.hpp"
+#include "Rendering/PBRTexturedMaterial.hpp"
+#include "Rendering/UnlitTexturedMaterial.hpp"
+#include "Rendering/DiffuseTexturedMaterial.hpp"
 #include <imgui.h>
 #include <iostream>
 #include "player.h"
 #include "camera.h"
 #include "mesh_navigator.h"
+
+
+void AddDirectionalLight(Mona::World& world, const glm::vec3& axis, float angle, float lightIntensity)
+{
+	auto light = world.CreateGameObject<Mona::GameObject>();
+	auto transform = world.AddComponent<Mona::TransformComponent>(light);
+	transform->Rotate(axis, angle);
+	world.AddComponent<Mona::DirectionalLightComponent>(light, lightIntensity * glm::vec3(1.0f));
+
+}
 
 class Snowboarding : public Mona::Application
 {
@@ -16,33 +29,47 @@ public:
 		//Mona::SourceDirectoryData::SetSourceDirectory("../assets");
 		auto& meshManager = Mona::MeshManager::GetInstance();
 		auto& config = Mona::Config::GetInstance();
+		auto& textureManager = Mona::TextureManager::GetInstance();
 
-		auto wallMaterial = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat));
-		wallMaterial->SetDiffuseColor(glm::vec3(0.0f, 1.0f, 0.0f));
 
 		// Setting Map
+		std::shared_ptr<Mona::PBRTexturedMaterial> terr_material = std::static_pointer_cast<Mona::PBRTexturedMaterial>(world.CreateMaterial(Mona::MaterialType::PBRTextured));
+		std::shared_ptr<Mona::Texture> albedo = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_albedo.png"));
+		std::shared_ptr<Mona::Texture> normalMap = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_normal.png"));
+		std::shared_ptr<Mona::Texture> metallic = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_metallic.png"));
+		std::shared_ptr<Mona::Texture> roughness = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_rough.png"));
+		std::shared_ptr<Mona::Texture> ambientOcclusion = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_ao.png"));
+		terr_material->SetAlbedoTexture(albedo);
+		terr_material->SetNormalMapTexture(normalMap);
+		terr_material->SetMetallicTexture(normalMap);
+		terr_material->SetRoughnessTexture(roughness);
+		terr_material->SetAmbientOcclusionTexture(ambientOcclusion);
 		auto map = world.CreateGameObject<Mona::GameObject>();
 		Mona::TransformHandle mapTransform = world.AddComponent<Mona::TransformComponent>(map);
-		std::filesystem::path terrain_p = config.getPathOfApplicationAsset("terrain_delaunay.obj");
-		std::cout << config.getPathOfEngineAsset("") << std::endl;
-		std::cout << config.getPathRelativeToExecutable("") << std::endl;
-		std::cout << config.getPathOfApplicationAsset("") << std::endl;
-		std::cout << terrain_p << std::endl;
-		world.AddComponent<Mona::StaticMeshComponent>(map, meshManager.LoadMesh(terrain_p, false), wallMaterial);
+		float terr_scale = 10.0f;
+		mapTransform->Scale(glm::vec3(terr_scale));
+		std::filesystem::path terrain_p = config.getPathOfApplicationAsset("snowboard_terrain.obj");
+		world.AddComponent<Mona::StaticMeshComponent>(map, meshManager.LoadMesh(terrain_p, true), terr_material);
 
+		MeshNavigator meshNav(terrain_p.string(), terr_scale);
 
 		// setting light and gravity
 		world.SetGravity(glm::vec3(0.0f, 0.0f, 0.0f));
-		world.SetAmbientLight(glm::vec3(0.5f));
-		auto player = world.CreateGameObject<Player>(glm::vec3(0.0f));
+		glm::vec3 sunAxis(1.0f, 0.0f, 0.0f);
+		float sunAngle = 45.0f;
+		float sunIntensity = 4.0f;
+		AddDirectionalLight(world, sunAxis, sunAngle, sunIntensity);
+		world.SetAmbientLight(glm::vec3(0.9f));
+		auto player = world.CreateGameObject<Player>(glm::vec3(-5.38262f * terr_scale, -0.636242f * terr_scale, -2.91527f * terr_scale), &meshNav);
 		auto camera = world.CreateGameObject<Camera>(player, 15.0f, 0.0f, 0.0f);
 
 		// setting cube for reference
+		auto wallMaterial = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat));
+		wallMaterial->SetDiffuseColor(glm::vec3(0.0f, 1.0f, 0.0f));
 		auto cube = world.CreateGameObject<Mona::GameObject>();
 		Mona::TransformHandle transform = world.AddComponent<Mona::TransformComponent>(cube, glm::vec3(0.0f, 0.0f, -5.0f), glm::fquat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 		world.AddComponent<Mona::StaticMeshComponent>(cube, meshManager.LoadMesh(Mona::Mesh::PrimitiveType::Cube), wallMaterial);
 
-		//MeshNavigator meshNav("../assets/terrain_delaunay.obj");
 	}
 
 	virtual void UserShutDown(Mona::World& world) noexcept override {
