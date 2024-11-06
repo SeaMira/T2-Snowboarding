@@ -228,9 +228,9 @@ Triangle MeshNavigator::getTriangleFromPosition(const std::string& filename, glm
             scene->mMeshes[0]->mVertices[face.mIndices[2]].y * m_scale,
             scene->mMeshes[0]->mVertices[face.mIndices[2]].z * m_scale);
 
-        std::cout << v0.x << ", " << v0.y << ", " << v0.z << std::endl;
+        /*std::cout << v0.x << ", " << v0.y << ", " << v0.z << std::endl;
         std::cout << v1.x << ", " << v1.y << ", " << v1.z << std::endl;
-        std::cout << v2.x << ", " << v2.y << ", " << v2.z << std::endl;
+        std::cout << v2.x << ", " << v2.y << ", " << v2.z << std::endl;*/
 
         Triangle T(v0, v1, v2);
 
