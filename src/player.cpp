@@ -1,7 +1,7 @@
 #include "player.h"
 #include <iostream>
 
-Player::Player(glm::vec3 initPos, MeshNavigator* meshNav) : mInitPos(initPos), m_MeshNav(meshNav) {}
+Player::Player(glm::vec3 initPos, MeshNavigator* meshNav, float timer) : mInitPos(initPos), m_MeshNav(meshNav), game_timer(timer) {}
 
 Player::~Player() = default;
 
@@ -39,6 +39,11 @@ void Player::UserStartUp(Mona::World& world) noexcept {
 	mAccelerationSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/SFX/accel.wav"));
 	mSlideSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/SFX/slide.wav"));
 	mCrashSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/SFX/crash.wav"));
+	mWinSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/APOGG/LifeIsFullOfJoy.wav"));
+
+	/*ImGui::Begin("Snowboarding Info:");
+	ImGui::Text("Speed: %.2f", game_timer); 
+	ImGui::End();*/
 }
 
 void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
@@ -53,8 +58,12 @@ void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 	if (mStopTimer <= 0.0f) {
 		stopped = false;
 	}
+	if (mTransform->GetLocalTranslation().z < -520.698f && !win) {
+		win = true;
+		world.PlayAudioClip3D(mWinSound, mTransform->GetLocalTranslation(), 0.3f);
+	}
 
-	if (q != nullptr && !stopped) {
+	if (q != nullptr && !stopped && !win) {
 		reaccelerate = std::min(1.0f, reaccelerate + timeStep);
 		// 1. Calculate quad normal and sliding force
 		glm::vec3 quadNormal = q->calculateQuadNormal();
@@ -66,9 +75,6 @@ void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 
 		glm::vec3 slideForce = glm::cross(quadNormal, glm::cross(gravity, quadNormal));
 
-		// 2. Apply sliding force to horizontal velocity
-
-		// 3. Enforce maximum horizontal speed
 		glm::vec3 horizontalVelocity = glm::vec3(velocity.x, 0.0f, velocity.z);
 
 		if (glm::length(horizontalVelocity) > mSpeed * mGlobalSpeed * acceleration * reaccelerate) {
@@ -130,6 +136,10 @@ void Player::keyPressed(Mona::World& world, float timeStep) {
 		}
 
 	}
+	if (input.IsKeyPressed(MONA_KEY_R)) {
+		mTransform->SetTranslation(mInitPos);
+		velocity = glm::vec3(0.0f);
+	}
 	//if (moveDir.x != 0.0f || moveDir.y != 0.0f || moveDir.z != 0.0f) moveDir = glm::normalize(moveDir);
 	//mTransform->Translate(moveDir * timeStep * mSpeed);
 
@@ -137,12 +147,21 @@ void Player::keyPressed(Mona::World& world, float timeStep) {
 
 void Player::buttonPressed(Mona::World& world, float timeStep) {
 	auto& input = world.GetInput();
-	glm::vec3 moveDir(0.0f);
-	float leftStickX = input.GetGamepadAxisValue(MONA_JOYSTICK_1, MONA_GAMEPAD_AXIS_LEFT_X);
-	float leftStickY = input.GetGamepadAxisValue(MONA_JOYSTICK_1, MONA_GAMEPAD_AXIS_LEFT_Y);
+	if (onFloor) {
+		float leftStickX = input.GetGamepadAxisValue(MONA_JOYSTICK_1, MONA_GAMEPAD_AXIS_LEFT_X);
 
-	if (std::abs(leftStickX) > 0.2f) moveDir += glm::vec3(leftStickX, 0.0f, 0.0f);
-	if (std::abs(leftStickY) > 0.2f) moveDir += glm::vec3(0.0f, 0.0f, leftStickY);
+		if (std::abs(leftStickX) > 0.2f) velocity = glm::rotateY(velocity, leftStickX * rotationSpeed * timeStep);
 
-	mTransform->Translate(moveDir * timeStep * mSpeed);
+		if (input.IsGamepadButtonPressed(MONA_JOYSTICK_1, MONA_GAMEPAD_BUTTON_CROSS) && mAccTimer > 1.0f) {
+			acceleration = maxAcceleration;
+			velocity *= acceleration;
+			mAccTimer = 0.0f;
+			world.PlayAudioClip3D(mAccelerationSound, mTransform->GetLocalTranslation(), 0.3f);
+		}
+		if (input.IsGamepadButtonPressed(MONA_JOYSTICK_1, MONA_GAMEPAD_BUTTON_CIRCLE)) {
+			velocity *= deceleration;
+		}
+
+	}
+	
 }

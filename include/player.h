@@ -3,10 +3,11 @@
 #include "mesh_navigator.h"
 #include "MonaEngine.hpp"
 #include "Rendering/DiffuseFlatMaterial.hpp"
+//#include <imgui.h>
 
 class Player : public Mona::GameObject {
 public:
-	Player(glm::vec3 initPos, MeshNavigator* meshNav);
+	Player(glm::vec3 initPos, MeshNavigator* meshNav, float timer);
 	~Player();
 
     virtual void UserStartUp(Mona::World& world) noexcept;
@@ -26,7 +27,7 @@ public:
 private:
     Mona::TransformHandle mTransform;
     glm::vec3 mInitPos;
-
+    float game_timer;
     glm::vec3 gravity = glm::vec3(0.0f, -9.8f, 0.0f);
 
 
@@ -46,6 +47,7 @@ private:
 
     bool onFloor = false;
     bool stopped = false;
+    bool win = false;
 
     float mStopTimer = 0.0f;
     float mAccTimer = 1.0f;
@@ -54,6 +56,7 @@ private:
     std::shared_ptr<Mona::AudioClip> mAccelerationSound;
     std::shared_ptr<Mona::AudioClip> mSlideSound;
     std::shared_ptr<Mona::AudioClip> mCrashSound;
+    std::shared_ptr<Mona::AudioClip> mWinSound;
 
     friend class Camera;
 };

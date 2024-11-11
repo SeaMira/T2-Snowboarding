@@ -13,6 +13,8 @@
 #include "accelerator.h"
 
 
+float GAME_TIMER = 30.0f;
+
 void AddDirectionalLight(Mona::World& world, const glm::vec3& axis, float angle, float lightIntensity)
 {
 	auto light = world.CreateGameObject<Mona::GameObject>();
@@ -33,7 +35,6 @@ public:
 		auto& meshManager = Mona::MeshManager::GetInstance();
 		auto& config = Mona::Config::GetInstance();
 		auto& textureManager = Mona::TextureManager::GetInstance();
-
 		
 
 		// Setting Map
@@ -65,7 +66,7 @@ public:
 		float sunIntensity = 4.0f;
 		AddDirectionalLight(world, sunAxis, sunAngle, sunIntensity);
 		world.SetAmbientLight(glm::vec3(0.9f));
-		auto player = world.CreateGameObject<Player>(glm::vec3(5.14424, 18.117, -5.95871), meshNav);
+		auto player = world.CreateGameObject<Player>(glm::vec3(5.14424, 18.117, -5.95871), meshNav, GAME_TIMER);
 		auto camera = world.CreateGameObject<Camera>(player, 15.0f, 0.0f, 0.0f);
 
 		// ambient music
@@ -73,7 +74,7 @@ public:
 		auto audioClipPtr = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/APOGG/MegaBotBay.wav"));
 		auto audioSource = world.AddComponent<Mona::AudioSourceComponent>(camera, audioClipPtr);
 		audioSource->SetIsLooping(true);
-		audioSource->SetVolume(0.3f);
+		audioSource->SetVolume(0.15f);
 		audioSource->Play();
 
 		// setting cube for reference
@@ -97,12 +98,16 @@ public:
 		auto arc1 = world.CreateGameObject<Accelerator>(terr_scale * glm::vec3(-0.28f, -0.4282f, -3.82f), player, acceleratorScale*2.0f);
 		auto arc2 = world.CreateGameObject<Accelerator>(terr_scale * glm::vec3(-0.568, -0.704f, -6.0365f), player, acceleratorScale*2.0f);
 		auto arc3 = world.CreateGameObject<Accelerator>(terr_scale * glm::vec3(0.568, -0.704f, -6.0365f), player, acceleratorScale*2.0f);
+		auto goalLine = world.CreateGameObject<Accelerator>(terr_scale * glm::vec3(0.01f, -1.25453f, -10.4698f), player, acceleratorScale*5.0f);
+
 	}
+
 
 	virtual void UserShutDown(Mona::World& world) noexcept override {
 	}
 	virtual void UserUpdate(Mona::World& world, float timeStep) noexcept override {
 	}
+
 };
 int main()
 {
