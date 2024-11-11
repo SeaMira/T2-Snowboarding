@@ -17,6 +17,11 @@ public:
 
     void buttonPressed(Mona::World& world, float timeStep);
 
+    void stopPlayer();
+    void accelleratePlayer();
+
+    glm::vec3 getPos();
+
     
 private:
     Mona::TransformHandle mTransform;
@@ -35,11 +40,14 @@ private:
     const float rotationSpeed = 2.0f;  // Controla la velocidad de giro
     float acceleration = 1.0f;  // Controla qué tan rápido aumenta la velocidad
     const float maxAcceleration = 2.0f;  // Controla qué tan rápido aumenta la velocidad
+    const float mbuffAcceleration = 4.0f;  // Controla qué tan rápido aumenta la velocidad
     const float deceleration = 0.9f;   // Controla qué tan rápido disminuye la velocidad al presionar "S"
+    float reaccelerate = 1.0f;   // Controla qué tan rápido disminuye la velocidad al presionar "S"
 
     bool onFloor = false;
+    bool stopped = false;
 
-    float mTimer = 1.0f;
+    float mStopTimer = 0.0f;
     float mAccTimer = 1.0f;
     MeshNavigator* m_MeshNav;
 

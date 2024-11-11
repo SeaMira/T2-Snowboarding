@@ -5,6 +5,21 @@ Player::Player(glm::vec3 initPos, MeshNavigator* meshNav) : mInitPos(initPos), m
 
 Player::~Player() = default;
 
+glm::vec3 Player::getPos() {
+	return mTransform->GetLocalTranslation();
+}
+
+void Player::stopPlayer() {
+	reaccelerate = 0.0f;
+	stopped = true;
+	mStopTimer = 3.0f;
+	velocity = glm::vec3(0.0f);
+}
+
+void Player::accelleratePlayer() {
+	acceleration = mbuffAcceleration;
+}
+
 void Player::UserStartUp(Mona::World& world) noexcept {
 	auto wallMaterial = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat));
 	wallMaterial->SetDiffuseColor(glm::vec3(0.9f));
@@ -27,7 +42,13 @@ void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 	mAccTimer += timeStep;
 	acceleration = std::max(1.0f, acceleration - timeStep);
 
-	if (q != nullptr) {
+	mStopTimer -= timeStep;
+	if (mStopTimer <= 0.0f) {
+		stopped = false;
+	}
+
+	if (q != nullptr && !stopped) {
+		reaccelerate = std::min(1.0f, reaccelerate + timeStep);
 		// 1. Calculate quad normal and sliding force
 		glm::vec3 quadNormal = q->calculateQuadNormal();
 
@@ -43,8 +64,8 @@ void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 		// 3. Enforce maximum horizontal speed
 		glm::vec3 horizontalVelocity = glm::vec3(velocity.x, 0.0f, velocity.z);
 
-		if (glm::length(horizontalVelocity) > mSpeed * mGlobalSpeed * acceleration) {
-			horizontalVelocity = glm::normalize(horizontalVelocity) * mSpeed * mGlobalSpeed * acceleration;
+		if (glm::length(horizontalVelocity) > mSpeed * mGlobalSpeed * acceleration * reaccelerate) {
+			horizontalVelocity = glm::normalize(horizontalVelocity) * mSpeed * mGlobalSpeed * acceleration * reaccelerate;
 			velocity.x = horizontalVelocity.x;
 			velocity.z = horizontalVelocity.z;
 		}
@@ -60,11 +81,8 @@ void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 			mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, groundY, mTransform->GetLocalTranslation().z));
 			float angleIn = glm::dot(horizontalVelocity, quadNormal);
 			if (angleIn > 0.0f) {
-				std::cout << angleIn << std::endl;
 				velocity.y = angleIn*2.0f;
 			} else velocity.y = angleIn/90.0f;
-
-			
 
 			// Apply friction to the horizontal speed if on the ground
 			velocity.x *= 0.99f; // Horizontal friction factor (adjust as needed)
@@ -86,7 +104,7 @@ void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 void Player::keyPressed(Mona::World& world, float timeStep) {
 	auto& input = world.GetInput();
 	
-	if (onFloor) {
+	if (onFloor && !stopped) {
 		if ((input.IsKeyPressed(MONA_KEY_W) || input.IsKeyPressed(MONA_KEY_UP)) && mAccTimer > 1.0f) {
 			acceleration = maxAcceleration;
 			velocity *= acceleration ;

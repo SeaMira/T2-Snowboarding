@@ -9,6 +9,8 @@
 #include "player.h"
 #include "camera.h"
 #include "mesh_navigator.h"
+#include "obstacle.h"
+#include "accelerator.h"
 
 
 void AddDirectionalLight(Mona::World& world, const glm::vec3& axis, float angle, float lightIntensity)
@@ -71,6 +73,20 @@ public:
 		Mona::TransformHandle transform = world.AddComponent<Mona::TransformComponent>(cube, glm::vec3(0.0f, 0.0f, -5.0f), glm::fquat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 		world.AddComponent<Mona::StaticMeshComponent>(cube, meshManager.LoadMesh(Mona::Mesh::PrimitiveType::Cube), wallMaterial);
 
+		float obstacleScale = 2.0f;
+		auto snowMan1 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(-0.4318f, -0.2439f, -2.3424f), player, obstacleScale);
+		auto snowMan2 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(0.1363f, -0.459f, -4.0663f), player, obstacleScale);
+		auto snowMan3 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(-0.02272f, -0.4694f, -6.5291f), player, obstacleScale);
+		auto snowMan4 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(0.409f, -0.7656f, -6.5291f), player, obstacleScale);
+		auto snowMan5 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(-0.72727f, -0.8576f, -7.2679f), player, obstacleScale);
+		auto snowMan6 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(-0.7045f, -1.1168f, -9.3615f), player, obstacleScale);
+		auto snowMan7 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(0.6818f, -1.14718f, -9.6078f), player, obstacleScale);
+		auto snowMan8 = world.CreateGameObject<Obstacle>(terr_scale * glm::vec3(0.01f, -1.22386f, -10.2235f), player, obstacleScale*4.0f);
+
+		float acceleratorScale = 4.0f;
+		auto arc1 = world.CreateGameObject<Accelerator>(terr_scale * glm::vec3(-0.28f, -0.4282f, -3.82f), player, acceleratorScale*2.0f);
+		auto arc2 = world.CreateGameObject<Accelerator>(terr_scale * glm::vec3(-0.568, -0.704f, -6.0365f), player, acceleratorScale*2.0f);
+		auto arc3 = world.CreateGameObject<Accelerator>(terr_scale * glm::vec3(0.568, -0.704f, -6.0365f), player, acceleratorScale*2.0f);
 	}
 
 	virtual void UserShutDown(Mona::World& world) noexcept override {
