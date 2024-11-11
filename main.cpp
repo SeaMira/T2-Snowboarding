@@ -33,12 +33,13 @@ public:
 
 
 		// Setting Map
+		world.SetBackgroundColor(0.1f, 0.1f, 1.0f, 1.0f);
 		std::shared_ptr<Mona::PBRTexturedMaterial> terr_material = std::static_pointer_cast<Mona::PBRTexturedMaterial>(world.CreateMaterial(Mona::MaterialType::PBRTextured));
-		std::shared_ptr<Mona::Texture> albedo = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_albedo.png"));
-		std::shared_ptr<Mona::Texture> normalMap = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_normal.png"));
-		std::shared_ptr<Mona::Texture> metallic = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_metallic.png"));
-		std::shared_ptr<Mona::Texture> roughness = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_rough.png"));
-		std::shared_ptr<Mona::Texture> ambientOcclusion = textureManager.LoadTexture(config.getPathOfApplicationAsset("terrain_tex_ao.png"));
+		std::shared_ptr<Mona::Texture> albedo = textureManager.LoadTexture(config.getPathOfApplicationAsset("albedo_scnd.png"));
+		std::shared_ptr<Mona::Texture> normalMap = textureManager.LoadTexture(config.getPathOfApplicationAsset("normal_scnd.png"));
+		std::shared_ptr<Mona::Texture> metallic = textureManager.LoadTexture(config.getPathOfApplicationAsset("metallic_scnd.png"));
+		std::shared_ptr<Mona::Texture> roughness = textureManager.LoadTexture(config.getPathOfApplicationAsset("rough_scnd.png"));
+		std::shared_ptr<Mona::Texture> ambientOcclusion = textureManager.LoadTexture(config.getPathOfApplicationAsset("AO_scnd.png"));
 		terr_material->SetAlbedoTexture(albedo);
 		terr_material->SetNormalMapTexture(normalMap);
 		terr_material->SetMetallicTexture(normalMap);
@@ -46,12 +47,12 @@ public:
 		terr_material->SetAmbientOcclusionTexture(ambientOcclusion);
 		auto map = world.CreateGameObject<Mona::GameObject>();
 		Mona::TransformHandle mapTransform = world.AddComponent<Mona::TransformComponent>(map);
-		float terr_scale = 10.0f;
+		float terr_scale = 50.0f;
 		mapTransform->Scale(glm::vec3(terr_scale));
-		std::filesystem::path terrain_p = config.getPathOfApplicationAsset("snowboard_terrain.obj");
+		std::filesystem::path terrain_p = config.getPathOfApplicationAsset("scnd_snow_terrain_T.obj");
 		world.AddComponent<Mona::StaticMeshComponent>(map, meshManager.LoadMesh(terrain_p, true), terr_material);
 
-		MeshNavigator meshNav(terrain_p.string(), terr_scale);
+		MeshNavigator* meshNav = new MeshNavigator(terrain_p.string(), terr_scale);
 
 		// setting light and gravity
 		world.SetGravity(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -60,7 +61,7 @@ public:
 		float sunIntensity = 4.0f;
 		AddDirectionalLight(world, sunAxis, sunAngle, sunIntensity);
 		world.SetAmbientLight(glm::vec3(0.9f));
-		auto player = world.CreateGameObject<Player>(glm::vec3(-5.38262f * terr_scale, -0.636242f * terr_scale, -2.91527f * terr_scale), &meshNav);
+		auto player = world.CreateGameObject<Player>(glm::vec3(5.14424, 18.117, -5.95871), meshNav);
 		auto camera = world.CreateGameObject<Camera>(player, 15.0f, 0.0f, 0.0f);
 
 		// setting cube for reference

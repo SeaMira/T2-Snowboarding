@@ -22,11 +22,26 @@ private:
     Mona::TransformHandle mTransform;
     glm::vec3 mInitPos;
 
-    // keyboard
-    float mSpeed = 10.0f;
+    glm::vec3 gravity = glm::vec3(0.0f, -9.8f, 0.0f);
+
+
+    glm::vec3 velocity = glm::vec3(0.0f);
+    const float mSpeed = 6.5f;
+    const float mGlobalSpeed = 5.0f;
+    const float slideSpeed = 6.5f;
+    const float heightInterpolationSpeed = 1.0f;
+    const float groundThreshold = 0.1f;
+
+    const float rotationSpeed = 2.0f;  // Controla la velocidad de giro
+    float acceleration = 1.0f;  // Controla qué tan rápido aumenta la velocidad
+    const float maxAcceleration = 2.0f;  // Controla qué tan rápido aumenta la velocidad
+    const float deceleration = 0.9f;   // Controla qué tan rápido disminuye la velocidad al presionar "S"
+
+    bool onFloor = false;
+
     float mTimer = 1.0f;
+    float mAccTimer = 1.0f;
     MeshNavigator* m_MeshNav;
 
-    Triangle mPosT = Triangle(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f));
     friend class Camera;
 };

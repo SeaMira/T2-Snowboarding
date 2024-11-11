@@ -13,56 +13,98 @@ void Player::UserStartUp(Mona::World& world) noexcept {
 	mTransform = world.AddComponent<Mona::TransformComponent>(*this, mInitPos, glm::fquat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f));
 	world.AddComponent<Mona::StaticMeshComponent>(*this, meshManager.LoadMesh(Mona::Mesh::PrimitiveType::Cube), wallMaterial);
 
-	//std::cout << "Pos prev: " << mTransform->GetLocalTranslation().x << ", " << mTransform->GetLocalTranslation().y << ", " << mTransform->GetLocalTranslation().z << std::endl;
-	mPosT = m_MeshNav->getTriangleFromPosition(mTransform->GetLocalTranslation());
-	std::cout << mPosT.v0.x << ", " << mPosT.v0.y << ", " << mPosT.v0.z << std::endl;
-	std::cout << mPosT.v1.x << ", " << mPosT.v1.y << ", " << mPosT.v1.z << std::endl;
-	std::cout << mPosT.v2.x << ", " << mPosT.v2.y << ", " << mPosT.v2.z << std::endl;
-	glm::vec2 posXZ(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
-	float y = getInterpolatedHeight(posXZ, mPosT);
-	mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, y, mTransform->GetLocalTranslation().z));
-	//std::cout << "Pos post: " << mPosT->v0.x << ", " << mPosT->v0.y << ", " << mPosT->v0.z << std::endl;
+	auto& config = Mona::Config::GetInstance();
+	std::filesystem::path terrain_p = config.getPathOfApplicationAsset("Models/scnd_snow_terrain_quad.obj");
+
+	m_MeshNav->loadMeshToMap(terrain_p.string());
 }
 
 void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 	keyPressed(world, timeStep);
 	buttonPressed(world, timeStep);
-	auto& config = Mona::Config::GetInstance();
-	std::filesystem::path terrain_p = config.getPathOfApplicationAsset("snowboard_terrain.obj");
+	
+	Quad* q = m_MeshNav->getQuadAtPosition(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
+	mAccTimer += timeStep;
+	acceleration = std::max(1.0f, acceleration - timeStep);
 
-	mTimer -= timeStep;
-	if (mTimer <= 0.0f) {
-		std::cout << "Pos prev: " << mTransform->GetLocalTranslation().x << ", " << mTransform->GetLocalTranslation().y << ", " << mTransform->GetLocalTranslation().z << std::endl;
-		mPosT = m_MeshNav->getTriangleFromPosition(terrain_p.string(), mTransform->GetLocalTranslation());
-		mTimer = 1.0f;
+	if (q != nullptr) {
+		// 1. Calculate quad normal and sliding force
+		glm::vec3 quadNormal = q->calculateQuadNormal();
+
+		// Definir el vector hacia arriba (normal al suelo plano)
+		glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+		float angleRadians = glm::acos(glm::dot(glm::normalize(quadNormal), upVector));
+		float angleDegrees = glm::degrees(angleRadians);
+
+		glm::vec3 slideForce = glm::cross(quadNormal, glm::cross(gravity, quadNormal));
+
+		// 2. Apply sliding force to horizontal velocity
+
+		// 3. Enforce maximum horizontal speed
+		glm::vec3 horizontalVelocity = glm::vec3(velocity.x, 0.0f, velocity.z);
+
+		if (glm::length(horizontalVelocity) > mSpeed * mGlobalSpeed * acceleration) {
+			horizontalVelocity = glm::normalize(horizontalVelocity) * mSpeed * mGlobalSpeed * acceleration;
+			velocity.x = horizontalVelocity.x;
+			velocity.z = horizontalVelocity.z;
+		}
+
+		// 4. Apply gravity to vertical velocity if airborne
+		float currentY = mTransform->GetLocalTranslation().y;
+		float groundY = q->getHeightAt(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
+
+		if (currentY <= groundY + groundThreshold) {
+			velocity += slideForce * timeStep * slideSpeed * (angleDegrees / 45.0f) * (angleDegrees / 45.0f);
+			onFloor = true;
+			// On the ground: snap to ground and apply friction
+			mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, groundY, mTransform->GetLocalTranslation().z));
+			float angleIn = glm::dot(horizontalVelocity, quadNormal);
+			if (angleIn > 0.0f) {
+				std::cout << angleIn << std::endl;
+				velocity.y = angleIn*2.0f;
+			} else velocity.y = angleIn/90.0f;
+
+			
+
+			// Apply friction to the horizontal speed if on the ground
+			velocity.x *= 0.99f; // Horizontal friction factor (adjust as needed)
+			velocity.z *= 0.99f;
+		}
+		else {
+			// In the air: let gravity continue acting on the player
+			onFloor = false;
+			velocity += gravity * 10.0f * timeStep;
+		}
+
+		// 5. Update player position based on the calculated velocity
+		mTransform->Translate(velocity * timeStep);
 	}
-	//std::cout << "y" << std::endl;
-	glm::vec2 posXZ(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
-	float y = getInterpolatedHeight(posXZ, mPosT);
-	std::cout << y << std::endl;
-	//mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, y, mTransform->GetLocalTranslation().z));
-	//std::cout << "Pos post: " << mTransform->GetLocalTranslation().x << "," << mTransform->GetLocalTranslation().y << ", " << mTransform->GetLocalTranslation().z << std::endl;
 
 }
 
 
 void Player::keyPressed(Mona::World& world, float timeStep) {
 	auto& input = world.GetInput();
-	glm::vec3 moveDir(0.0f, 0.0f, 0.0f);
-	if (input.IsKeyPressed(MONA_KEY_W) || input.IsKeyPressed(MONA_KEY_UP)) {
-		moveDir += glm::vec3(0.0f, 0.0f, -1.0f);
+	
+	if (onFloor) {
+		if ((input.IsKeyPressed(MONA_KEY_W) || input.IsKeyPressed(MONA_KEY_UP)) && mAccTimer > 1.0f) {
+			acceleration = maxAcceleration;
+			velocity *= acceleration ;
+			mAccTimer = 0.0f;
+		}
+		if (input.IsKeyPressed(MONA_KEY_S) || input.IsKeyPressed(MONA_KEY_DOWN)) {
+			velocity *= deceleration ;
+		}
+		if (input.IsKeyPressed(MONA_KEY_D) || input.IsKeyPressed(MONA_KEY_RIGHT)) {
+			velocity = glm::rotateY(velocity, -rotationSpeed * timeStep);
+		}
+		if (input.IsKeyPressed(MONA_KEY_A) || input.IsKeyPressed(MONA_KEY_LEFT)) {
+			velocity = glm::rotateY(velocity, rotationSpeed * timeStep);
+		}
+
 	}
-	if (input.IsKeyPressed(MONA_KEY_S) || input.IsKeyPressed(MONA_KEY_DOWN)) {
-		moveDir += glm::vec3(0.0f, 0.0f, 1.0f);
-	}
-	if (input.IsKeyPressed(MONA_KEY_D) || input.IsKeyPressed(MONA_KEY_RIGHT)) {
-		moveDir += glm::vec3(1.0f, 0.0f, 0.0f);
-	}
-	if (input.IsKeyPressed(MONA_KEY_A) || input.IsKeyPressed(MONA_KEY_LEFT)) {
-		moveDir += glm::vec3(-1.0f, 0.0f, 0.0f);
-	}
-	if (moveDir.x != 0.0f || moveDir.y != 0.0f || moveDir.z != 0.0f) moveDir = glm::normalize(moveDir);
-	mTransform->Translate(moveDir * timeStep * mSpeed);
+	//if (moveDir.x != 0.0f || moveDir.y != 0.0f || moveDir.z != 0.0f) moveDir = glm::normalize(moveDir);
+	//mTransform->Translate(moveDir * timeStep * mSpeed);
 
 }
 

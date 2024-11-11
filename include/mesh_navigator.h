@@ -9,53 +9,77 @@
 #include <unordered_map>
 #include <vector>
 
-// Estructura Triangle
-struct Triangle {
-    glm::vec3 v0 = glm::vec3(0.0f), v1 = glm::vec3(0.0f), v2 = glm::vec3(0.0f); // Vértices del triángulo
-    Triangle* neighbor1;  // Triángulos vecinos
-    Triangle* neighbor2;
-    Triangle* neighbor3;
 
-    Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
-        : neighbor1(nullptr), neighbor2(nullptr), neighbor3(nullptr) {
-        v0 = a;
-        v1 = b;
-        v2 = c;
-    }
-};
+bool isPointInTriangleXZ(const glm::vec2& p, const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2);
+float interpolateHeightInTriangle(const glm::vec2& p, const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2);
 
-float getInterpolatedHeight(const glm::vec2& pos, Triangle triangle);
 
-// Hash para comparar aristas, sin importar el orden de los vértices
-struct Edge {
-    glm::vec3 v1, v2;
-    Edge(const glm::vec3& a, const glm::vec3& b) : v1(a), v2(b) {
-        if (!compareVertices(v1, v2)) std::swap(v1, v2);  // Ordenar para asegurar que (a,b) == (b,a)
+
+class Quad {
+public:
+    glm::vec3 v0, v1, v2, v3; // Vértices del quad
+
+    Quad() = default;
+
+    Quad(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, const glm::vec3& d) {
+        std::vector<glm::vec3> vertices = { a, b, c, d };
+        orderVerticesCCW(vertices);
+        v0 = vertices[0];
+        v1 = vertices[1];
+        v2 = vertices[2];
+        v3 = vertices[3];
     }
 
-    // Función de comparación para asegurar el orden entre los vértices
-    static bool compareVertices(const glm::vec3& a, const glm::vec3& b) {
-        if (a.x != b.x) return a.x < b.x;
-        if (a.y != b.y) return a.y < b.y;
-        return a.z < b.z;
-    }
+    // Calcular la altura en el punto (x, z) si el quad es un plano
+    float getHeightAt(float x, float z) const {
+        // Calcular el vector normal del plano usando v0, v1 y v2
+        glm::vec3 normal = glm::normalize(glm::cross(v1 - v0, v2 - v0));
 
-    bool operator==(const Edge& other) const {
-        return v1 == other.v1 && v2 == other.v2;
-    }
-};
+        // Ecuación del plano: Ax + By + Cz + D = 0
+        // Desglosamos en A, B, C y calculamos D usando uno de los vértices (v0)
+        float A = normal.x;
+        float B = normal.y;
+        float C = normal.z;
+        float D = -(A * v0.x + B * v0.y + C * v0.z);
 
-// Hash function para Edge en unordered_map
-namespace std {
-    template <>
-    struct hash<Edge> {
-        size_t operator()(const Edge& edge) const {
-            auto hash1 = hash<float>()(edge.v1.x) ^ hash<float>()(edge.v1.y) ^ hash<float>()(edge.v1.z);
-            auto hash2 = hash<float>()(edge.v2.x) ^ hash<float>()(edge.v2.y) ^ hash<float>()(edge.v2.z);
-            return hash1 ^ hash2;
+        // Usando la ecuación del plano para resolver y en función de x y z
+        // y = -(Ax + Cz + D) / B
+        if (B == 0) {
+            throw std::runtime_error("Plano paralelo al eje Y; la altura no está definida.");
         }
-    };
-}
+        return -(A * x + C * z + D) / B;
+    }
+
+    glm::vec3 calculateQuadNormal() const {
+        // Crear dos vectores a partir de los vértices del quad
+        glm::vec3 edge1 = v1 - v0;
+        glm::vec3 edge2 = v3 - v0;
+
+        // Calcular la normal usando el producto cruzado de los dos vectores
+        glm::vec3 normal = glm::normalize(glm::cross(edge1, edge2));
+        return normal;
+    }
+
+private:
+    void orderVerticesCCW(std::vector<glm::vec3>& vertices) {
+        // Calcula el centro del quad en el plano XZ
+        glm::vec3 center(0.0f);
+        for (const auto& v : vertices) {
+            center += v;
+        }
+        center /= vertices.size();
+
+        // Calcula los ángulos de cada vértice respecto al centro en el plano XZ
+        std::sort(vertices.begin(), vertices.end(), [&center](const glm::vec3& a, const glm::vec3& b) {
+            float angleA = atan2(a.z - center.z, a.x - center.x);
+            float angleB = atan2(b.z - center.z, b.x - center.x);
+            return angleA < angleB; // Orden CCW
+            });
+    }
+};
+
+float getHeightInQuad(const glm::vec2& positionXZ, Quad* quad);
+
 
 
 class MeshNavigator {
@@ -64,12 +88,14 @@ class MeshNavigator {
     ~MeshNavigator() = default;
 
     std::string m_filename;
-    std::vector<Triangle> triangles;
-    std::vector<Triangle> loadMeshWithNeighbors(const std::string& filename, float scale);
-    Triangle getTriangleFromPosition(glm::vec3 position);
-    Triangle getTriangleFromPosition(const std::string& filename, glm::vec3 position);
-    Triangle* getTriangleFromPosition(glm::vec3 position, Triangle* startingT);
+
+    std::vector<Quad*> quads;
+
+    void loadMeshToMap(const std::string& filename);
+    Quad* getQuadAtPosition(float x, float z);
 
     float m_scale;
 
 };
+
+
