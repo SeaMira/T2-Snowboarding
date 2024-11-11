@@ -17,8 +17,8 @@ public:
 
     void buttonPressed(Mona::World& world, float timeStep);
 
-    void stopPlayer();
-    void accelleratePlayer();
+    void stopPlayer(Mona::World& world);
+    void accelleratePlayer(Mona::World& world);
 
     glm::vec3 getPos();
 
@@ -50,6 +50,10 @@ private:
     float mStopTimer = 0.0f;
     float mAccTimer = 1.0f;
     MeshNavigator* m_MeshNav;
+
+    std::shared_ptr<Mona::AudioClip> mAccelerationSound;
+    std::shared_ptr<Mona::AudioClip> mSlideSound;
+    std::shared_ptr<Mona::AudioClip> mCrashSound;
 
     friend class Camera;
 };

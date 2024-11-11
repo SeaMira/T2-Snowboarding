@@ -35,7 +35,7 @@ void Obstacle::UserUpdate(Mona::World& world, float timeStep) noexcept {
 	bool inZ = (mInitPos.z - 1.0f * mScale <= playerPos.z) && (playerPos.z <= mInitPos.z + 1.0f * mScale);
 	bool inY = (mInitPos.y <= playerPos.y) && (playerPos.y <= mInitPos.y + 3.8f * mScale);
 	if (inX && inY && inZ && mIsVisible) {
-		mPlayer->stopPlayer();
+		mPlayer->stopPlayer(world);
 		mIsVisible = false;
 	}
 }

@@ -33,7 +33,7 @@ void Accelerator::UserUpdate(Mona::World& world, float timeStep) noexcept {
 	bool inZ = (mInitPos.z - mScale / 10.0f <= playerPos.z) && (playerPos.z <= mInitPos.z + mScale / 10.0f);
 	bool inY = (mInitPos.y <= playerPos.y) && (playerPos.y <= mInitPos.y + 2.0f * mScale * postL - 0.3f * mScale);
 	if (inX && inY && inZ && mIsVisible) {
-		mPlayer->accelleratePlayer();
+		mPlayer->accelleratePlayer(world);
 		mIsVisible = false;
 	}
 }

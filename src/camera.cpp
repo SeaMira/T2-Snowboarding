@@ -8,6 +8,10 @@ Camera::Camera(Mona::GameObjectHandle<Player> player, float range, float yaw, fl
 
 Camera::~Camera() = default;
 
+Mona::TransformHandle Camera::getTransform() {
+    return mTransform;
+}
+
 void Camera::UserStartUp(Mona::World& world) noexcept {
     mTransform = world.AddComponent<Mona::TransformComponent>(*this, glm::vec3(0.0f));
     glm::vec3 cameraPos = calculateCameraPosition(mPlayerTransform->GetLocalTranslation());

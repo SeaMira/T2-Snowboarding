@@ -28,11 +28,13 @@ public:
 	Snowboarding() = default;
 	~Snowboarding() = default;
 	virtual void UserStartUp(Mona::World& world) noexcept override {
-		//Mona::SourceDirectoryData::SetSourceDirectory("../assets");
+		
+		auto& audioClipManager = Mona::AudioClipManager::GetInstance();
 		auto& meshManager = Mona::MeshManager::GetInstance();
 		auto& config = Mona::Config::GetInstance();
 		auto& textureManager = Mona::TextureManager::GetInstance();
 
+		
 
 		// Setting Map
 		world.SetBackgroundColor(0.1f, 0.1f, 1.0f, 1.0f);
@@ -65,6 +67,14 @@ public:
 		world.SetAmbientLight(glm::vec3(0.9f));
 		auto player = world.CreateGameObject<Player>(glm::vec3(5.14424, 18.117, -5.95871), meshNav);
 		auto camera = world.CreateGameObject<Camera>(player, 15.0f, 0.0f, 0.0f);
+
+		// ambient music
+		world.SetAudioListenerTransform(camera->getTransform());
+		auto audioClipPtr = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/APOGG/MegaBotBay.wav"));
+		auto audioSource = world.AddComponent<Mona::AudioSourceComponent>(camera, audioClipPtr);
+		audioSource->SetIsLooping(true);
+		audioSource->SetVolume(0.3f);
+		audioSource->Play();
 
 		// setting cube for reference
 		auto wallMaterial = std::static_pointer_cast<Mona::DiffuseFlatMaterial>(world.CreateMaterial(Mona::MaterialType::DiffuseFlat));

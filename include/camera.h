@@ -24,6 +24,8 @@ public:
     glm::quat calculateRotation(const glm::vec3& pos, const glm::vec3& lookAt, const glm::vec3& lookUp);
     glm::vec3 calculateCameraPosition(const glm::vec3& lookAt);
 
+    Mona::TransformHandle getTransform();
+
 
 private:
     Mona::GameObjectHandle<Player> mPlayer;

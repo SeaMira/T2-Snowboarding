@@ -9,15 +9,17 @@ glm::vec3 Player::getPos() {
 	return mTransform->GetLocalTranslation();
 }
 
-void Player::stopPlayer() {
+void Player::stopPlayer(Mona::World& world) {
 	reaccelerate = 0.0f;
 	stopped = true;
 	mStopTimer = 3.0f;
 	velocity = glm::vec3(0.0f);
+	world.PlayAudioClip3D(mCrashSound, mTransform->GetLocalTranslation(), 0.3f);
 }
 
-void Player::accelleratePlayer() {
+void Player::accelleratePlayer(Mona::World& world) {
 	acceleration = mbuffAcceleration;
+	world.PlayAudioClip3D(mAccelerationSound, mTransform->GetLocalTranslation(), 0.3f);
 }
 
 void Player::UserStartUp(Mona::World& world) noexcept {
@@ -32,6 +34,11 @@ void Player::UserStartUp(Mona::World& world) noexcept {
 	std::filesystem::path terrain_p = config.getPathOfApplicationAsset("Models/scnd_snow_terrain_quad.obj");
 
 	m_MeshNav->loadMeshToMap(terrain_p.string());
+
+	auto& audioClipManager = Mona::AudioClipManager::GetInstance();
+	mAccelerationSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/SFX/accel.wav"));
+	mSlideSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/SFX/slide.wav"));
+	mCrashSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/SFX/crash.wav"));
 }
 
 void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
@@ -76,6 +83,7 @@ void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
 
 		if (currentY <= groundY + groundThreshold) {
 			velocity += slideForce * timeStep * slideSpeed * (angleDegrees / 45.0f) * (angleDegrees / 45.0f);
+			if (!onFloor) world.PlayAudioClip3D(mSlideSound, mTransform->GetLocalTranslation(), 0.3f);
 			onFloor = true;
 			// On the ground: snap to ground and apply friction
 			mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, groundY, mTransform->GetLocalTranslation().z));
@@ -109,6 +117,7 @@ void Player::keyPressed(Mona::World& world, float timeStep) {
 			acceleration = maxAcceleration;
 			velocity *= acceleration ;
 			mAccTimer = 0.0f;
+			world.PlayAudioClip3D(mAccelerationSound, mTransform->GetLocalTranslation(), 0.3f);
 		}
 		if (input.IsKeyPressed(MONA_KEY_S) || input.IsKeyPressed(MONA_KEY_DOWN)) {
 			velocity *= deceleration ;
