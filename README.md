@@ -10,6 +10,7 @@ Con teclado y mouse se tienen los siguientes controles:
 - S sirve para desacelerar.
 - D sirve para rotar hacia la derecha.
 - A sirve para rotar hacia la izquierda.
+- R para reiniciar posición en caso de fallo.
 - Mouse para mover la cámara. La rueda quita/agrega zoom.
 
 Con joystick:
