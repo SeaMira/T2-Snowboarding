@@ -109,10 +109,8 @@ public:
 	}
 
 };
-int main()
-{
+int main() {
 	Snowboarding app;
 	Mona::Engine engine(app);
 	engine.StartMainLoop();
-
 }

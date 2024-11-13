@@ -41,75 +41,79 @@ void Player::UserStartUp(Mona::World& world) noexcept {
 	mCrashSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/SFX/crash.wav"));
 	mWinSound = audioClipManager.LoadAudioClip(config.getPathOfApplicationAsset("Sounds/APOGG/LifeIsFullOfJoy.wav"));
 
-	/*ImGui::Begin("Snowboarding Info:");
-	ImGui::Text("Speed: %.2f", game_timer); 
-	ImGui::End();*/
+
 }
 
 void Player::UserUpdate(Mona::World& world, float timeStep) noexcept {
-	keyPressed(world, timeStep);
-	buttonPressed(world, timeStep);
+	if (!loose) {
+		mGameTimer -= timeStep;
+		spdlog::info("Timer: {}", mGameTimer);
+		if (mGameTimer <= 0.0f) {
+			loose = true;
+		}
+
+		keyPressed(world, timeStep);
+		buttonPressed(world, timeStep);
 	
-	Quad* q = m_MeshNav->getQuadAtPosition(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
-	mAccTimer += timeStep;
-	acceleration = std::max(1.0f, acceleration - timeStep);
+		Quad* q = m_MeshNav->getQuadAtPosition(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
+		mAccTimer += timeStep;
+		acceleration = std::max(1.0f, acceleration - timeStep);
 
-	mStopTimer -= timeStep;
-	if (mStopTimer <= 0.0f) {
-		stopped = false;
-	}
-	if (mTransform->GetLocalTranslation().z < -520.698f && !win) {
-		win = true;
-		world.PlayAudioClip3D(mWinSound, mTransform->GetLocalTranslation(), 0.3f);
-	}
 
-	if (q != nullptr && !stopped && !win) {
-		reaccelerate = std::min(1.0f, reaccelerate + timeStep);
-		// 1. Calculate quad normal and sliding force
-		glm::vec3 quadNormal = q->calculateQuadNormal();
-
-		// Definir el vector hacia arriba (normal al suelo plano)
-		glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
-		float angleRadians = glm::acos(glm::dot(glm::normalize(quadNormal), upVector));
-		float angleDegrees = glm::degrees(angleRadians);
-
-		glm::vec3 slideForce = glm::cross(quadNormal, glm::cross(gravity, quadNormal));
-
-		glm::vec3 horizontalVelocity = glm::vec3(velocity.x, 0.0f, velocity.z);
-
-		if (glm::length(horizontalVelocity) > mSpeed * mGlobalSpeed * acceleration * reaccelerate) {
-			horizontalVelocity = glm::normalize(horizontalVelocity) * mSpeed * mGlobalSpeed * acceleration * reaccelerate;
-			velocity.x = horizontalVelocity.x;
-			velocity.z = horizontalVelocity.z;
+		mStopTimer -= timeStep;
+		if (mStopTimer <= 0.0f) {
+			stopped = false;
+		}
+		if (mTransform->GetLocalTranslation().z < -520.698f && !win) {
+			win = true;
+			world.PlayAudioClip3D(mWinSound, mTransform->GetLocalTranslation(), 0.3f);
 		}
 
-		// 4. Apply gravity to vertical velocity if airborne
-		float currentY = mTransform->GetLocalTranslation().y;
-		float groundY = q->getHeightAt(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
+		if (q != nullptr && !stopped && !win) {
+			reaccelerate = std::min(1.0f, reaccelerate + timeStep);
+		
+			glm::vec3 quadNormal = q->calculateQuadNormal();
 
-		if (currentY <= groundY + groundThreshold) {
-			velocity += slideForce * timeStep * slideSpeed * (angleDegrees / 45.0f) * (angleDegrees / 45.0f);
-			if (!onFloor) world.PlayAudioClip3D(mSlideSound, mTransform->GetLocalTranslation(), 0.3f);
-			onFloor = true;
-			// On the ground: snap to ground and apply friction
-			mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, groundY, mTransform->GetLocalTranslation().z));
-			float angleIn = glm::dot(horizontalVelocity, quadNormal);
-			if (angleIn > 0.0f) {
-				velocity.y = angleIn*2.0f;
-			} else velocity.y = angleIn/90.0f;
+		
+			glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
+			float angleRadians = glm::acos(glm::dot(glm::normalize(quadNormal), upVector));
+			float angleDegrees = glm::degrees(angleRadians);
 
-			// Apply friction to the horizontal speed if on the ground
-			velocity.x *= 0.99f; // Horizontal friction factor (adjust as needed)
-			velocity.z *= 0.99f;
+			glm::vec3 slideForce = glm::cross(quadNormal, glm::cross(gravity, quadNormal));
+
+			glm::vec3 horizontalVelocity = glm::vec3(velocity.x, 0.0f, velocity.z);
+
+			if (glm::length(horizontalVelocity) > mSpeed * mGlobalSpeed * acceleration * reaccelerate) {
+				horizontalVelocity = glm::normalize(horizontalVelocity) * mSpeed * mGlobalSpeed * acceleration * reaccelerate;
+				velocity.x = horizontalVelocity.x;
+				velocity.z = horizontalVelocity.z;
+			}
+
+		
+			float currentY = mTransform->GetLocalTranslation().y;
+			float groundY = q->getHeightAt(mTransform->GetLocalTranslation().x, mTransform->GetLocalTranslation().z);
+
+			if (currentY <= groundY + groundThreshold) {
+				velocity += slideForce * timeStep * slideSpeed * (angleDegrees / 45.0f) * (angleDegrees / 45.0f);
+				if (!onFloor) world.PlayAudioClip3D(mSlideSound, mTransform->GetLocalTranslation(), 0.3f);
+				onFloor = true;
+		
+				mTransform->SetTranslation(glm::vec3(mTransform->GetLocalTranslation().x, groundY, mTransform->GetLocalTranslation().z));
+				float angleIn = glm::dot(horizontalVelocity, quadNormal);
+				if (angleIn > 0.0f) {
+					velocity.y = angleIn*2.0f;
+				} else velocity.y = angleIn/90.0f;
+
+				velocity.x *= 0.99f;
+				velocity.z *= 0.99f;
+			}
+			else {
+				onFloor = false;
+				velocity += gravity * 10.0f * timeStep;
+			}
+
+			mTransform->Translate(velocity * timeStep);
 		}
-		else {
-			// In the air: let gravity continue acting on the player
-			onFloor = false;
-			velocity += gravity * 10.0f * timeStep;
-		}
-
-		// 5. Update player position based on the calculated velocity
-		mTransform->Translate(velocity * timeStep);
 	}
 
 }

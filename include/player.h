@@ -48,9 +48,11 @@ private:
     bool onFloor = false;
     bool stopped = false;
     bool win = false;
+    bool loose = false;
 
     float mStopTimer = 0.0f;
     float mAccTimer = 1.0f;
+    float mGameTimer = 30.0f;
     MeshNavigator* m_MeshNav;
 
     std::shared_ptr<Mona::AudioClip> mAccelerationSound;
